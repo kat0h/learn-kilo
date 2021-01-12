@@ -15,7 +15,7 @@ void enableRawMode() {
 
     tcgetattr(STDIN_FILENO, &raw);
     orig_termios = raw;
-    raw.c_lflag &= ~(ECHO);
+    raw.c_lflag &= ~(ECHO | ICANON);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
