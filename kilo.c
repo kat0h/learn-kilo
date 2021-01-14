@@ -3,8 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/termios.h>
+#include <sys/ttydefaults.h>
 #include <termios.h>
 #include <unistd.h>
+
+#define CTRL_KEY(k) ((k) & 0x1f)
 
 // orig_termiosは元の状態 (Global)
 struct termios orig_termios;
@@ -43,7 +46,7 @@ int main() {
         } else {
             printf("%d ('%c')\r\n", c, c);
         }
-        if (c == 'q') break;
+        if (c == CTRL('q')) break;
     }
     return 0;
 }
