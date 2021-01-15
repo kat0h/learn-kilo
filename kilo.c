@@ -2,24 +2,43 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <sys/termios.h>
+#include <sys/ttycom.h>
 #include <sys/ttydefaults.h>
 #include <termios.h>
 #include <unistd.h>
 
 #define CTRL_KEY(k) ((k)&0x1f)
 
-struct editorConfig {
-  struct termios orig_termios;
-};
-
-struct editorConfig E;
-
 void die(const char *s) {
   write(STDOUT_FILENO, "\x1b[2J", 4);
   write(STDOUT_FILENO, "\x1b[H", 3);
   perror(s);
   exit(1);
+}
+
+struct editorConfig {
+  int screenrows;
+  int screencols;
+  struct termios orig_termios;
+};
+
+int getWindowSize(int *rows, int *cols) {
+  struct winsize ws;
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+    return -1;
+  } else {
+    *rows = ws.ws_row;
+    *cols = ws.ws_col;
+    return 0;
+  }
+}
+
+struct editorConfig E;
+
+void initEditor() {
+  if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
 void disableRawMode() {
@@ -54,8 +73,8 @@ char editorReadKey() {
 
 void editorDrawRows() {
   int y;
-  for (y = 0; y < 24; y++) {
-      write(STDOUT_FILENO, "~\r\n", 3);
+  for (y = 0; y < E.screenrows; y++) {
+    write(STDOUT_FILENO, "~\r\n", 3);
   }
 }
 
@@ -82,6 +101,7 @@ void editorProcessKeyPress() {
 
 int main() {
   enableRawMode();
+  initEditor();
   while (1) {
     editorRefreshScreen();
     editorProcessKeyPress();
