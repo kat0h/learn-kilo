@@ -24,6 +24,13 @@ struct editorConfig {
 };
 struct editorConfig E;
 
+enum editorKey {
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT,
+  ARROW_UP,
+  ARROW_DOWN
+};
+
 struct abuf {
   char *b;
   int len;
@@ -71,13 +78,41 @@ void enableRawMode() {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
-char editorReadKey() {
+int editorReadKey() {
   int nread;
   char c;
   while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
     if (nread == -1 && errno != EAGAIN)
       die("read");
   }
+
+  if (c == '\x1b') {
+    char seq[3];
+
+    if (read(STDIN_FILENO, &seq[0], 1) != 1)
+      return '\x1b';
+    if (read(STDIN_FILENO, &seq[1], 1) != 1)
+      return '\x1b';
+
+    if (seq[0] == '[') {
+      switch (seq[1]) {
+      case 'A':
+        return ARROW_UP;
+      case 'B':
+        return ARROW_DOWN;
+      case 'C':
+        return ARROW_LEFT;
+      case 'D':
+        return ARROW_RIGHT;
+      }
+
+      return '\x1b';
+
+    } else {
+      return c;
+    }
+  }
+
   return c;
 }
 
@@ -128,25 +163,25 @@ void editorRefreshScreen() {
   abFree(&ab);
 }
 
-void editorMoveCursor(char key) {
+void editorMoveCursor(int key) {
   switch (key) {
-  case 'a':
+  case ARROW_RIGHT:
     E.cx--;
     break;
-  case 'd':
+  case ARROW_LEFT:
     E.cx++;
     break;
-  case 'w':
+  case ARROW_UP:
     E.cy--;
     break;
-  case 's':
+  case ARROW_DOWN:
     E.cy++;
     break;
   }
 }
 
 void editorProcessKeyPress() {
-  char c = editorReadKey();
+  int c = editorReadKey();
 
   switch (c) {
   case CTRL_KEY('q'):
@@ -155,10 +190,10 @@ void editorProcessKeyPress() {
     exit(0);
     break;
 
-  case 'w':
-  case 's':
-  case 'a':
-  case 'd':
+  case ARROW_UP:
+  case ARROW_DOWN:
+  case ARROW_LEFT:
+  case ARROW_RIGHT:
     editorMoveCursor(c);
     break;
   }
